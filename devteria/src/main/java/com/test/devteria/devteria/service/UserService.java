@@ -12,17 +12,22 @@ import com.test.devteria.devteria.respone.UserRespone;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.security.access.prepost.PostAuthorize;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Slf4j
 public class UserService {
     UserRepository userRepository;
     UserMapper userMapper;
@@ -44,11 +49,18 @@ public class UserService {
         return userMapper.toUserResponse(userRepository.save(user));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
+    // CHECK ROLE BEFORE AFTER CALL FUNCTION
     public List<UserRespone> getUsers() {
+        log.info("Get all user");
         return userRepository.findAll().stream().map(userMapper::toUserResponse).toList();
     }
 
+    @PostAuthorize("returnObject.username == authentication.name")
+    // CHECK USER LOGIN CORRECT WITH USERNAME LOGINING OR NOT IF CORRECT CAN CALL FUNCTION GET DETAIL INFORMATION
+    // CALL FUNCTION BEFORE AFTER CHECK ROLE
     public UserRespone getUser(String id) {
+        log.info("In method get user by id");
         return userMapper.toUserResponse(userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found")));
     }
 
@@ -62,5 +74,13 @@ public class UserService {
 
     public void deleteUser(String userId) {
         userRepository.deleteById(userId);
+    }
+
+    public UserRespone getMyInfo (){
+       String context =  SecurityContextHolder.getContext().getAuthentication().getName();
+
+        User user = userRepository.findByUsername(context).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        return userMapper.toUserResponse(user);
     }
 }

@@ -30,7 +30,6 @@ public class UserController {
                 .result(userService.createUser(request))
                 .build();
     }
-
     @GetMapping
     public ApiRespone<List<UserRespone>>  getUsers (){
         var authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -44,9 +43,12 @@ public class UserController {
     }
 
     @GetMapping("/{userId}")
-    public UserRespone getUser (@PathVariable String userId){
+    public ApiRespone<UserRespone> getUser (@PathVariable String userId){
 
-        return userService.getUser(userId);
+        return ApiRespone.<UserRespone>builder()
+                .code(1000)
+                .result(userService.getUser(userId))
+                .build();
     }
 
     @PutMapping("/{userId}")
@@ -58,5 +60,12 @@ public class UserController {
     public String deleteUser (@PathVariable String userId){
          userService.deleteUser(userId);
         return "User has been deleted";
+    }
+
+    @GetMapping("/myInfo")
+    public ApiRespone<UserRespone> getMyInfo (){
+        return ApiRespone.<UserRespone>builder()
+                .result(userService.getMyInfo())
+                .build();
     }
 }
