@@ -5,6 +5,7 @@ import com.test.devteria.devteria.enums.Role;
 import com.test.devteria.devteria.exception.AppException;
 import com.test.devteria.devteria.exception.ErrorCode;
 import com.test.devteria.devteria.mapper.UserMapper;
+import com.test.devteria.devteria.repository.RoleRepository;
 import com.test.devteria.devteria.repository.UserRepository;
 import com.test.devteria.devteria.request.UserCreationRequest;
 import com.test.devteria.devteria.request.UserUpdateRequest;
@@ -32,6 +33,7 @@ public class UserService {
     UserRepository userRepository;
     UserMapper userMapper;
     PasswordEncoder passwordEncoder;
+    RoleRepository roleRepository;
 
     public UserRespone createUser(UserCreationRequest request) {
 
@@ -44,12 +46,12 @@ public class UserService {
         HashSet<String> roles = new HashSet<>();
         roles.add(Role.USER.name());
 
-        user.setRoles(roles);
+//        user.setRoles(roles);
 
         return userMapper.toUserResponse(userRepository.save(user));
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+
     // CHECK ROLE BEFORE AFTER CALL FUNCTION
     public List<UserRespone> getUsers() {
         log.info("Get all user");
@@ -68,6 +70,9 @@ public class UserService {
         User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
 
         userMapper.updateUser(user, request);
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+
+        var role = roleRepository.findAllById(request.getRoles());
 
         return userMapper.toUserResponse(userRepository.save(user));
     }
@@ -76,8 +81,8 @@ public class UserService {
         userRepository.deleteById(userId);
     }
 
-    public UserRespone getMyInfo (){
-       String context =  SecurityContextHolder.getContext().getAuthentication().getName();
+    public UserRespone getMyInfo() {
+        String context = SecurityContextHolder.getContext().getAuthentication().getName();
 
         User user = userRepository.findByUsername(context).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
