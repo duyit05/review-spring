@@ -72,48 +72,54 @@ public class AuthenticationService {
         } catch (AppException e) {
             invalid = false;
         }
-        return IntrospectResponse.builder()
-                .valid(invalid)
-                .build();
+        return IntrospectResponse.builder().valid(invalid).build();
     }
 
     public void logout(LogoutRequest request) throws ParseException, JOSEException {
+        // VERIFY TOKEN FROM REQUEST
         SignedJWT signToken = verifyToken(request.getToken());
 
+        // GET ID OF TOKEN
         String jwtIdToken = signToken.getJWTClaimsSet().getJWTID();
+
+        // VERIFY TOKEN EXPIRATION TIME OR NOT
         Date expiryTime = signToken.getJWTClaimsSet().getExpirationTime();
 
-        InvalidatedToken invalidatedToken = InvalidatedToken.builder()
-                .id(jwtIdToken)
-                .expiryTime(expiryTime)
-                .build();
+        // ASSIGN INFOR TOKEN
+        InvalidatedToken invalidatedToken = InvalidatedToken.builder().id(jwtIdToken).expiryTime(expiryTime).build();
 
+        // SAVE TO DATABASE
         invalidatedTokenRepository.save(invalidatedToken);
     }
 
     public AuthenticationResponse refreshToken(RefreshTokenRequest request) throws ParseException, JOSEException {
 
+        // VERIFY TOKEN FROM REQUEST
         SignedJWT signJWT = verifyToken(request.getToken());
 
+        // GET ID OF TOKEN
         String jwtIdToken = signJWT.getJWTClaimsSet().getJWTID();
+
+        // VERIFY EXPIRATION TIME
         Date expiryTime = signJWT.getJWTClaimsSet().getExpirationTime();
 
-        InvalidatedToken invalidatedToken = InvalidatedToken.builder()
-                .id(jwtIdToken)
-                .expiryTime(expiryTime)
-                .build();
+        // ASSIGN INFOR TOKEN
+        InvalidatedToken invalidatedToken = InvalidatedToken.builder().id(jwtIdToken).expiryTime(expiryTime).build();
 
+        // SAVE TO DATABASE
         invalidatedTokenRepository.save(invalidatedToken);
 
+        // VERIFY USERNAME
         String username = signJWT.getJWTClaimsSet().getSubject();
 
+        // VERIFY USERNAME EXIST IN DATABASE OR NOT
         User user = userRepository.findByUsername(username).orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
 
+        // GENERAL NEW TOKEN
         String token = generalToken(user);
-        return AuthenticationResponse.builder()
-                .token(token)
-                .authenticated(true)
-                .build();
+
+        // RESPONSE
+        return AuthenticationResponse.builder().token(token).authenticated(true).build();
 
     }
 
@@ -131,8 +137,7 @@ public class AuthenticationService {
         boolean verified = signedJWT.verify(verifier);
 
         // CHECK TOKEN VALID OR NOT AND TOKEN EXPITY TIME OR NOT
-        if (!(verified && expityTime.after(new Date())))
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        if (!(verified && expityTime.after(new Date()))) throw new AppException(ErrorCode.UNAUTHENTICATED);
 
         // CHECK TOKEN LOGOUT OR NOT
         if (invalidatedTokenRepository.existsById(signedJWT.getJWTClaimsSet().getJWTID()))
@@ -146,13 +151,7 @@ public class AuthenticationService {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
 
         // CREATE CLAIMS FOR TOKEN
-        JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
-                .subject(user.getUsername()).issuer("duymonkey.com")
-                .issueTime(new Date())
-                .expirationTime(new Date(Instant.now().plus(1, ChronoUnit.HOURS).toEpochMilli()))
-                .claim("scope", buildScope(user))
-                .jwtID(UUID.randomUUID().toString())
-                .build();
+        JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder().subject(user.getUsername()).issuer("duymonkey.com").issueTime(new Date()).expirationTime(new Date(Instant.now().plus(1, ChronoUnit.HOURS).toEpochMilli())).claim("scope", buildScope(user)).jwtID(UUID.randomUUID().toString()).build();
 
         // CREATE PAYLOAD CONTAIN INFOR TOKEN AND AFTER PARSE CLAIMS TO JSON AND PUT INTO PAYLOAD
         Payload payload = new Payload(jwtClaimsSet.toJSONObject());

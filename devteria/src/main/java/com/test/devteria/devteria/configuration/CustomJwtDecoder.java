@@ -19,7 +19,6 @@ import java.util.Objects;
 
 @Component
 public class CustomJwtDecoder implements JwtDecoder {
-
     @Value("${spring.datasource.jwt.privateKey}")
     private String SIGNER_KEY;
 
