@@ -1,6 +1,7 @@
 package com.test.devteria.devteria.configuration;
 
 import com.test.devteria.devteria.enums.Role;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,10 +24,11 @@ import javax.crypto.spec.SecretKeySpec;
 @EnableMethodSecurity
 public class SecutiryConfig {
 
-    @Value("${spring.datasource.jwt.privateKey}")
-    private String SIGNER_KEY;
+
+    @Autowired
+    CustomJwtDecoder customJwtDecoder;
     private final String[] PUBLIC_ENDPOINTS = {
-            "/users", "/auth/log-in", "/auth/instrospect"
+            "/users", "/auth/log-in", "/auth/instrospect", "auth/log-out","/auth/refresh"
     };
 
 
@@ -37,25 +39,18 @@ public class SecutiryConfig {
 
                         .anyRequest().authenticated());
 
-        http.oauth2ResourceServer(oauth2 -> oauth2.jwt(jwtConfigurer -> jwtConfigurer.decoder(jwtDecoder()).jwtAuthenticationConverter(jwtAuthenticationConverter()))
-                .authenticationEntryPoint(new JwtAuthenticationEntryPoint()));
+        http.oauth2ResourceServer(oauth2 -> oauth2.jwt(jwtConfigurer -> jwtConfigurer.decoder(customJwtDecoder)
+                                            .jwtAuthenticationConverter(jwtAuthenticationConverter()))
+                                            .authenticationEntryPoint(new JwtAuthenticationEntryPoint()));
 
         http.csrf(AbstractHttpConfigurer::disable);
         return http.build();
     }
 
-    @Bean
-    public JwtDecoder jwtDecoder() {
-        SecretKeySpec secretKeySpec = new SecretKeySpec(SIGNER_KEY.getBytes(), "HS512");
-        return NimbusJwtDecoder
-                .withSecretKey(secretKeySpec)
-                .macAlgorithm(MacAlgorithm.HS512)
-                .build();
-    }
 
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtGrantedAuthoritiesConverter jwtGrantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
-        jwtGrantedAuthoritiesConverter.setAuthorityPrefix("ROLE_");
+        jwtGrantedAuthoritiesConverter.setAuthorityPrefix("");
 
         JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
         jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(jwtGrantedAuthoritiesConverter);

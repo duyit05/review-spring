@@ -2,11 +2,10 @@ package com.test.devteria.devteria.entity;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.ManyToMany;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
-import java.util.Set;
+import java.util.Date;
 
 @Entity
 @Data
@@ -14,15 +13,8 @@ import java.util.Set;
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Builder
-public class Role {
+public class InvalidatedToken {
     @Id
-    String name;
-    String description;
-
-    @ManyToMany
-    Set<Permission> permissions;
-
-    public Role(String name) {
-        this.name = name;
-    }
+    String id;
+    Date expiryTime;
 }

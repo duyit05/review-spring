@@ -1,7 +1,8 @@
 package com.test.devteria.devteria.service;
 
+import com.test.devteria.devteria.entity.Role;
 import com.test.devteria.devteria.entity.User;
-import com.test.devteria.devteria.enums.Role;
+
 import com.test.devteria.devteria.exception.AppException;
 import com.test.devteria.devteria.exception.ErrorCode;
 import com.test.devteria.devteria.mapper.UserMapper;
@@ -21,9 +22,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -43,16 +42,25 @@ public class UserService {
         User user = userMapper.toUser(request);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
 
-        HashSet<String> roles = new HashSet<>();
-        roles.add(Role.USER.name());
+        // FIND ROLE DEFAULT IS USER
+        Role roleDefault = roleRepository.findById("USER").orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
 
-//        user.setRoles(roles);
+        // CREATE SET AFTER ADD ROLE
+        Set<Role> roles = new HashSet<>();
+        roles.add(roleDefault);
+
+        // CREATE ROLE FOR USER
+        user.setRoles(roles);
 
         return userMapper.toUserResponse(userRepository.save(user));
     }
 
 
     // CHECK ROLE BEFORE AFTER CALL FUNCTION
+    @PreAuthorize("hasRole('ADMIN')")
+
+    //@PreAuthorize("hasAuthority('UPPROVE_POST')")
+    // CHECK FOLLOW WITH PERMISSION
     public List<UserRespone> getUsers() {
         log.info("Get all user");
         return userRepository.findAll().stream().map(userMapper::toUserResponse).toList();
@@ -72,8 +80,8 @@ public class UserService {
         userMapper.updateUser(user, request);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
 
-        var role = roleRepository.findAllById(request.getRoles());
-
+        List<Role> roles = roleRepository.findAllById(request.getRoles());
+        user.setRoles(new HashSet<>(roles));
         return userMapper.toUserResponse(userRepository.save(user));
     }
 

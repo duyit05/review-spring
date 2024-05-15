@@ -3,6 +3,8 @@ package com.test.devteria.devteria.controller;
 import com.nimbusds.jose.JOSEException;
 import com.test.devteria.devteria.request.AuthenticationRequest;
 import com.test.devteria.devteria.request.IntrospectRequest;
+import com.test.devteria.devteria.request.LogoutRequest;
+import com.test.devteria.devteria.request.RefreshTokenRequest;
 import com.test.devteria.devteria.respone.ApiRespone;
 import com.test.devteria.devteria.respone.AuthenticationResponse;
 import com.test.devteria.devteria.respone.IntrospectResponse;
@@ -26,20 +28,34 @@ public class AuthenticationController {
     AuthenticationService authenticationService;
 
     @PostMapping("/log-in")
-    ApiRespone<AuthenticationResponse> authenticate(@RequestBody AuthenticationRequest request) {
+    public ApiRespone<AuthenticationResponse> authenticate(@RequestBody AuthenticationRequest request) {
         var result = authenticationService.authentication(request);
         return ApiRespone.<AuthenticationResponse>builder()
-                .code(1000)
                 .result(result)
                 .build();
     }
 
+    @PostMapping("/log-out")
+    public ApiRespone<Void> logout(@RequestBody LogoutRequest request) throws ParseException, JOSEException {
+        authenticationService.logout(request);
+
+        return ApiRespone.<Void>builder()
+                .message("Logout successfully")
+                .build();
+    }
+
     @PostMapping("/instrospect")
-    ApiRespone<IntrospectResponse> authenticate(@RequestBody IntrospectRequest request) throws ParseException, JOSEException {
+    public ApiRespone<IntrospectResponse> authenticate(@RequestBody IntrospectRequest request) throws ParseException, JOSEException {
         var result = authenticationService.introspect(request);
         return ApiRespone.<IntrospectResponse>builder()
-                .code(1000)
                 .result(result)
+                .build();
+    }
+
+    @PostMapping("/refresh")
+    public ApiRespone<AuthenticationResponse> refreshToken (@RequestBody RefreshTokenRequest request) throws ParseException, JOSEException {
+        return ApiRespone.<AuthenticationResponse>builder()
+                .result(authenticationService.refreshToken(request))
                 .build();
     }
 }
