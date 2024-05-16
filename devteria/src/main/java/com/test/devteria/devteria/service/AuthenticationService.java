@@ -47,6 +47,14 @@ public class AuthenticationService {
     @Value("${spring.datasource.jwt.privateKey}")
     protected String SIGNER_KEY;
 
+    @NonFinal
+    @Value("${spring.datasource.jwt.valid-duration}")
+    protected Long VALID_DURATION;
+
+    @NonFinal
+    @Value("${spring.datasource.jwt.refreshable-duration}")
+    protected Long REFRESH_DURATION;
+
     UserRepository userRepository;
 
     public AuthenticationResponse authentication(AuthenticationRequest request) {
@@ -68,7 +76,7 @@ public class AuthenticationService {
         var token = request.getToken();
         boolean invalid = true;
         try {
-            verifyToken(token);
+            verifyToken(token, false);
         } catch (AppException e) {
             invalid = false;
         }
@@ -76,26 +84,30 @@ public class AuthenticationService {
     }
 
     public void logout(LogoutRequest request) throws ParseException, JOSEException {
-        // VERIFY TOKEN FROM REQUEST
-        SignedJWT signToken = verifyToken(request.getToken());
+        try {
+            // VERIFY TOKEN FROM REQUEST
+            SignedJWT signToken = verifyToken(request.getToken(), true);
 
-        // GET ID OF TOKEN
-        String jwtIdToken = signToken.getJWTClaimsSet().getJWTID();
+            // GET ID OF TOKEN
+            String jwtIdToken = signToken.getJWTClaimsSet().getJWTID();
 
-        // VERIFY TOKEN EXPIRATION TIME OR NOT
-        Date expiryTime = signToken.getJWTClaimsSet().getExpirationTime();
+            // VERIFY TOKEN EXPIRATION TIME OR NOT
+            Date expiryTime = signToken.getJWTClaimsSet().getExpirationTime();
 
-        // ASSIGN INFOR TOKEN
-        InvalidatedToken invalidatedToken = InvalidatedToken.builder().id(jwtIdToken).expiryTime(expiryTime).build();
+            // ASSIGN INFOR TOKEN
+            InvalidatedToken invalidatedToken = InvalidatedToken.builder().id(jwtIdToken).expiryTime(expiryTime).build();
 
-        // SAVE TO DATABASE
-        invalidatedTokenRepository.save(invalidatedToken);
+            // SAVE TO DATABASE
+            invalidatedTokenRepository.save(invalidatedToken);
+        } catch (AppException e) {
+            log.info("Token already expired");
+        }
     }
 
     public AuthenticationResponse refreshToken(RefreshTokenRequest request) throws ParseException, JOSEException {
 
         // VERIFY TOKEN FROM REQUEST
-        SignedJWT signJWT = verifyToken(request.getToken());
+        SignedJWT signJWT = verifyToken(request.getToken(), true);
 
         // GET ID OF TOKEN
         String jwtIdToken = signJWT.getJWTClaimsSet().getJWTID();
@@ -123,7 +135,7 @@ public class AuthenticationService {
 
     }
 
-    private SignedJWT verifyToken(String token) throws JOSEException, ParseException {
+    private SignedJWT verifyToken(String token, boolean isRefresh) throws JOSEException, ParseException {
         // VERIFY TOKEN, USING SIGNER_KEY TO CHECK TOKEN CAN  REPLACE OR NOT
         JWSVerifier verifier = new MACVerifier(SIGNER_KEY.getBytes());
 
@@ -131,7 +143,10 @@ public class AuthenticationService {
         SignedJWT signedJWT = SignedJWT.parse(token);
 
         // CHECK TOKEN EXPIRATION TIME
-        Date expityTime = signedJWT.getJWTClaimsSet().getExpirationTime();
+        Date expityTime = (isRefresh)
+                ? new Date(signedJWT.getJWTClaimsSet().getIssueTime()
+                .toInstant().plus(REFRESH_DURATION, ChronoUnit.SECONDS).toEpochMilli())
+                : signedJWT.getJWTClaimsSet().getExpirationTime();
 
         // VERIFY SIGNER_KEY NOT REPLACE
         boolean verified = signedJWT.verify(verifier);
@@ -147,11 +162,16 @@ public class AuthenticationService {
     }
 
     public String generalToken(User user) {
-        //  CREATE HEADER FOR TOKEN WITH ALGORITM HS 512 TO SIGN
+        //  CREATE HEADER FOR TOKEN WITH ALGORITM HS512 TO SIGN
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
 
         // CREATE CLAIMS FOR TOKEN
-        JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder().subject(user.getUsername()).issuer("duymonkey.com").issueTime(new Date()).expirationTime(new Date(Instant.now().plus(1, ChronoUnit.HOURS).toEpochMilli())).claim("scope", buildScope(user)).jwtID(UUID.randomUUID().toString()).build();
+        JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
+                .subject(user.getUsername()).issuer("duymonkey.com")
+                .issueTime(new Date())
+                .expirationTime(new Date(Instant.now().plus(VALID_DURATION, ChronoUnit.SECONDS).toEpochMilli()))
+                .claim("scope", buildScope(user)).jwtID(UUID.randomUUID().toString())
+                .build();
 
         // CREATE PAYLOAD CONTAIN INFOR TOKEN AND AFTER PARSE CLAIMS TO JSON AND PUT INTO PAYLOAD
         Payload payload = new Payload(jwtClaimsSet.toJSONObject());
