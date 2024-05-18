@@ -138,7 +138,6 @@ public class AuthenticationService {
     private SignedJWT verifyToken(String token, boolean isRefresh) throws JOSEException, ParseException {
         // VERIFY TOKEN, USING SIGNER_KEY TO CHECK TOKEN CAN  REPLACE OR NOT
         JWSVerifier verifier = new MACVerifier(SIGNER_KEY.getBytes());
-
         // DECRYPTION TOKEN
         SignedJWT signedJWT = SignedJWT.parse(token);
 
@@ -147,7 +146,6 @@ public class AuthenticationService {
                 ? new Date(signedJWT.getJWTClaimsSet().getIssueTime()
                 .toInstant().plus(REFRESH_DURATION, ChronoUnit.SECONDS).toEpochMilli())
                 : signedJWT.getJWTClaimsSet().getExpirationTime();
-
         // VERIFY SIGNER_KEY NOT REPLACE
         boolean verified = signedJWT.verify(verifier);
 
@@ -157,7 +155,6 @@ public class AuthenticationService {
         // CHECK TOKEN LOGOUT OR NOT
         if (invalidatedTokenRepository.existsById(signedJWT.getJWTClaimsSet().getJWTID()))
             throw new AppException(ErrorCode.UNAUTHENTICATED);
-
         return signedJWT;
     }
 

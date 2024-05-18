@@ -3,8 +3,7 @@ package com.test.devteria.devteria.request;
 import com.test.devteria.devteria.entity.Role;
 import com.test.devteria.devteria.validator.DobConstraint;
 import jakarta.validation.constraints.Size;
-import lombok.AccessLevel;
-import lombok.Data;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDate;
@@ -12,8 +11,11 @@ import java.util.Set;
 
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class UserCreationRequest {
-     @Size(min = 2 , message = "USER_INVALID")
+     @Size(min = 4 , message = "USER_INVALID")
      String username;
      @Size(min = 2 , message = "PASSWORD_INVALID")
      String password;
